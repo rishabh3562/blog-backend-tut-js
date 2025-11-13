@@ -1,15 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const connectDB = require('./config/database');
+const { connectRedis } = require('./config/redis');
 const errorHandler = require('./middleware/errorHandler');
+const { apiLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
-// Connect to database
-connectDB();
-
 // Body parser middleware
 app.use(express.json());
+
+// Apply global rate limiter to all API routes
+app.use('/api', apiLimiter);
 
 // Mount routes
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -29,6 +31,21 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// Initialize database and Redis connections
+const initializeApp = async () => {
+    try {
+        await Promise.all([
+            connectDB(),
+            connectRedis()
+        ]);
+
+        app.listen(PORT, () => {
+            console.log(`✅ Server is running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to initialize application:', error);
+        process.exit(1);
+    }
+};
+
+initializeApp();
