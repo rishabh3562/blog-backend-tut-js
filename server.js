@@ -12,6 +12,7 @@ connectDB();
 app.use(express.json());
 
 // Mount routes
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
 // 404 handler
