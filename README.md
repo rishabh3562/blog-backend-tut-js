@@ -1,15 +1,16 @@
-# Phase 3: Authentication & Authorization
+# Phase 4: Blog Features
 
-Welcome to Phase 3 of the Blog Backend Tutorial! Learn how to implement user authentication and authorization with JWT (JSON Web Tokens).
+Welcome to Phase 4 of the Blog Backend Tutorial! Learn how to implement core blog functionality with posts, validation, and authorization.
 
-## What's New in Phase 3
+## What's New in Phase 4
 
-- User registration and login functionality
-- Password hashing with bcryptjs
-- JWT-based authentication
-- Protected routes with middleware
-- User roles (user/admin)
-- Token-based session management
+- Blog post CRUD operations
+- Request validation with express-validator
+- Role-based authorization
+- Post ownership verification
+- Advanced filtering and search
+- View counter for posts
+- Author population
 
 ## Project Structure
 
@@ -18,18 +19,23 @@ blog-backend-tut/
 ├── config/
 │   └── database.js
 ├── models/
-│   └── User.js              # Updated with password & role
+│   ├── User.js
+│   └── Post.js                  # New: Blog post model
 ├── controllers/
 │   ├── userController.js
-│   └── authController.js    # New: Auth logic
+│   ├── authController.js
+│   └── postController.js        # New: Post operations
 ├── routes/
-│   ├── userRoutes.js        # Updated: Protected routes
-│   └── authRoutes.js        # New: Auth routes
+│   ├── userRoutes.js
+│   ├── authRoutes.js
+│   └── postRoutes.js            # New: Post routes
 ├── middleware/
 │   ├── errorHandler.js
-│   └── auth.js              # New: JWT middleware
+│   ├── auth.js
+│   ├── authorize.js             # New: Role-based access
+│   └── validation.js            # New: Input validation
 ├── server.js
-├── .env.example             # Updated with JWT vars
+├── .env.example
 └── package.json
 ```
 
@@ -38,29 +44,18 @@ blog-backend-tut/
 ```bash
 npm install
 cp .env.example .env
-# Update .env with your JWT_SECRET
+# Update .env with your configuration
 npm run dev
-```
-
-## Environment Variables
-
-Add these to your `.env` file:
-
-```
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/blog-tutorial
-JWT_SECRET=your_jwt_secret_key_here
-JWT_EXPIRE=30d
 ```
 
 ## API Endpoints
 
-### Authentication Routes (Public)
+### Authentication Routes
 - POST `/api/auth/register` - Register new user
 - POST `/api/auth/login` - Login user
 - GET `/api/auth/me` - Get current user (Protected)
 
-### User Routes (All Protected)
+### User Routes (Protected)
 - POST `/api/users` - Create user
 - GET `/api/users` - Get all users
 - GET `/api/users/:id` - Get user by ID
@@ -68,65 +63,127 @@ JWT_EXPIRE=30d
 - PATCH `/api/users/:id` - Partial update
 - DELETE `/api/users/:id` - Delete user
 
-## How Authentication Works
+### Post Routes
+#### Public
+- GET `/api/posts` - Get all posts (with filtering)
+- GET `/api/posts/:id` - Get single post
 
-1. **Registration**: User creates account with email/password
-2. **Password Hashing**: Password is hashed using bcryptjs before saving
-3. **Login**: User provides credentials, receives JWT token
-4. **Protected Routes**: Token required in Authorization header
-5. **Token Format**: `Bearer <token>`
+#### Protected
+- POST `/api/posts` - Create new post
+- PUT `/api/posts/:id` - Update post (owner/admin only)
+- DELETE `/api/posts/:id` - Delete post (owner/admin only)
+- GET `/api/posts/my/posts` - Get logged in user's posts
+
+## Post Features
+
+### Filtering & Search
+
+Get posts with query parameters:
+
+```bash
+# Filter by status
+GET /api/posts?status=published
+
+# Filter by author
+GET /api/posts?author=USER_ID
+
+# Filter by category
+GET /api/posts?category=technology
+
+# Search in title and content
+GET /api/posts?search=nodejs
+
+# Combine filters
+GET /api/posts?status=published&category=technology
+```
+
+### Post Model Fields
+
+- `title` - Post title (5-100 characters)
+- `content` - Post content (min 10 characters)
+- `author` - Reference to User (auto-set)
+- `status` - draft or published (default: draft)
+- `tags` - Array of tags
+- `category` - Post category
+- `views` - View counter (auto-incremented)
+- `publishedAt` - Auto-set when status changes to published
+- `createdAt` - Timestamp
+- `updatedAt` - Timestamp
+
+### Validation
+
+All post creation and updates are validated:
+- Title: 5-100 characters required
+- Content: Minimum 10 characters required
+- Status: Must be 'draft' or 'published'
+- Category: Maximum 50 characters
+- Tags: Must be an array
+
+### Authorization
+
+- Post creation: Requires authentication
+- Post updates: Only owner or admin can update
+- Post deletion: Only owner or admin can delete
+- View posts: Public access
 
 ## Example Usage
 
-### Register
+### Create Post
 ```bash
-POST /api/auth/register
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "age": 25
-}
-```
-
-### Login
-```bash
-POST /api/auth/login
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-### Access Protected Route
-```bash
-GET /api/users
+POST /api/posts
 Headers:
-  Authorization: Bearer <your_jwt_token>
+  Authorization: Bearer <token>
+Body:
+{
+  "title": "Introduction to Node.js",
+  "content": "Node.js is a powerful JavaScript runtime...",
+  "status": "published",
+  "category": "technology",
+  "tags": ["nodejs", "javascript", "backend"]
+}
+```
+
+### Update Post
+```bash
+PUT /api/posts/:id
+Headers:
+  Authorization: Bearer <token>
+Body:
+{
+  "title": "Updated Title",
+  "content": "Updated content..."
+}
+```
+
+### Get My Posts
+```bash
+GET /api/posts/my/posts
+Headers:
+  Authorization: Bearer <token>
 ```
 
 ## Key Features
 
-### Password Security
-- Passwords hashed with bcryptjs (10 rounds)
-- Passwords never returned in API responses
-- Secure password comparison
+### Ownership Verification
+- Users can only update/delete their own posts
+- Admins can update/delete any post
 
-### JWT Tokens
-- Stateless authentication
-- Token expiration (30 days default)
-- User ID embedded in token payload
+### View Counter
+- Automatically increments when a post is viewed
+- Useful for analytics and trending posts
 
-### Protected Routes
-- Middleware validates JWT tokens
-- User object attached to request
-- Unauthorized access returns 401
+### Text Search
+- Full-text search in title and content
+- Uses MongoDB text indexes for performance
 
-### User Roles
-- Role-based access control ready
-- Default role: 'user'
-- Admin role available for future features
+### Author Population
+- Post responses include author details
+- Shows author name and email
+
+### Validation Middleware
+- Clean error messages for invalid input
+- Field-level validation feedback
 
 ## What's Next?
 
-Phase 4: Blog Features (Posts, Comments, Categories)
+Phase 5: Advanced Features (Caching, Rate Limiting, Query Features)
